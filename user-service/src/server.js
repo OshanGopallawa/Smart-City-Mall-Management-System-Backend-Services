@@ -1,4 +1,3 @@
-app.set('trust proxy', 1);
 require('dotenv').config();
 const app = require('./app');
 const connectDB = require('./config/database');

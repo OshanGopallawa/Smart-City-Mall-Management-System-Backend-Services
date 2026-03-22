@@ -1,4 +1,3 @@
-app.set('trust proxy', 1);
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
@@ -15,6 +14,7 @@ const userRoutes = require('./routes/userRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'] }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 20, skip: (req) => !req.path.startsWith('/api/auth/users') }));
