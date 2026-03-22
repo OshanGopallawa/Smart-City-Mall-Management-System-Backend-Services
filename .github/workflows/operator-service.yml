@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: operator-service     # ✅ run all commands inside service folder
+        working-directory: operator-service
     services:
       mongodb:
         image: mongo:7
@@ -39,13 +39,12 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
-          cache-dependency-path: operator-service/package-lock.json  # ✅ correct path
+          cache-dependency-path: operator-service/package-lock.json
 
       - run: npm ci
 
-
       - name: Run tests with coverage
-        run: npm run test:ci -- --coverage
+        run: npm run test:ci
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret
@@ -57,7 +56,7 @@ jobs:
         if: always()
         with:
           name: operator-coverage
-          path: operator-service/coverage/       # ✅ correct path
+          path: operator-service/coverage/
           retention-days: 7
 
   security-scan:
@@ -74,7 +73,7 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
-          cache-dependency-path: operator-service/package-lock.json  # ✅ correct path
+          cache-dependency-path: operator-service/package-lock.json
 
       - run: npm ci
 
@@ -88,7 +87,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: operator-service/snyk.sarif  # ✅ correct path
+          sarif_file: operator-service/snyk.sarif
         continue-on-error: true
 
   build:
@@ -120,7 +119,7 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: ./operator-service           # ✅ correct Docker build context
+          context: ./operator-service
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
@@ -150,14 +149,10 @@ jobs:
     environment: production
     steps:
       - name: Trigger Render deploy
-        id: deploy
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_OPERATOR_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}')
-          if [ "$RESPONSE" != "201" ]; then
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
+            "${{ secrets.RENDER_DEPLOY_HOOK_OPERATOR }}")
+          if [ "$RESPONSE" != "200" ]; then
             echo "Deploy trigger failed with HTTP $RESPONSE"
             exit 1
           fi
