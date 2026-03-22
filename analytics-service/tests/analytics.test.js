@@ -1,6 +1,7 @@
 const request = require('supertest');
 
 jest.mock('../src/config/database', () => jest.fn().mockResolvedValue(true));
+
 jest.mock('../src/models/index', () => ({
   ActivityLog: {
     create: jest.fn().mockResolvedValue({ _id: 'log1' }),
@@ -31,6 +32,7 @@ jest.mock('../src/models/index', () => ({
     aggregate: jest.fn().mockResolvedValue([]),
   },
 }));
+
 jest.mock('mongoose', () => ({
   connect: jest.fn().mockResolvedValue({}),
   connection: { readyState: 1, name: 'analytics_service_db', on: jest.fn() },
@@ -51,6 +53,7 @@ describe('Analytics Service', () => {
 
   it('GET /health returns health', async () => {
     const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
     expect(res.body.service).toBe('analytics-service');
   });
 

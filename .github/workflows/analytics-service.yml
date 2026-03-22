@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: analytics-service    # ✅ run all commands inside service folder
+        working-directory: analytics-service
     services:
       mongodb:
         image: mongo:7
@@ -39,13 +39,12 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
-          cache-dependency-path: analytics-service/package-lock.json  # ✅ correct path
+          cache-dependency-path: analytics-service/package-lock.json
 
       - run: npm ci
 
-
       - name: Run tests with coverage
-        run: npm run test:ci -- --coverage
+        run: npm run test:ci
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret
@@ -56,7 +55,7 @@ jobs:
         if: always()
         with:
           name: analytics-coverage
-          path: analytics-service/coverage/      # ✅ correct path
+          path: analytics-service/coverage/
           retention-days: 7
 
   security-scan:
@@ -73,7 +72,7 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
-          cache-dependency-path: analytics-service/package-lock.json  # ✅ correct path
+          cache-dependency-path: analytics-service/package-lock.json
 
       - run: npm ci
 
@@ -87,7 +86,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: analytics-service/snyk.sarif  # ✅ correct path
+          sarif_file: analytics-service/snyk.sarif
         continue-on-error: true
 
   build:
@@ -119,7 +118,7 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: ./analytics-service          # ✅ correct Docker build context
+          context: ./analytics-service
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
@@ -149,18 +148,14 @@ jobs:
     environment: production
     steps:
       - name: Trigger Render deploy
-        id: deploy
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_ANALYTICS_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}')
-          if [ "$RESPONSE" != "201" ]; then
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
+            "${{ secrets.RENDER_DEPLOY_HOOK_ANALYTICS }}")
+          if [ "$RESPONSE" != "200" ] && [ "$RESPONSE" != "202" ]; then
             echo "Deploy trigger failed with HTTP $RESPONSE"
             exit 1
           fi
-          echo "Deploy triggered successfully"
+          echo "Deploy triggered successfully (HTTP $RESPONSE)"
 
       - name: Wait and smoke test
         run: |
