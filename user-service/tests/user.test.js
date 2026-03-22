@@ -17,6 +17,16 @@ jest.mock('mongoose', () => {
     return chain;
   };
 
+  // ✅ Define Schema as a class with static Types property
+  class Schema {
+    constructor() {
+      this.methods = {};
+      this.index = jest.fn();
+    }
+    plugin() {}
+  }
+  Schema.Types = { ObjectId: String };
+
   return {
     connect: jest.fn().mockResolvedValue({}),
     connection: {
@@ -24,13 +34,7 @@ jest.mock('mongoose', () => {
       name: 'user_service_db',
       on: jest.fn(),
     },
-    Schema: class {
-      constructor() {
-        this.methods = {};
-        this.index = jest.fn();
-      }
-      plugin() {}
-    },
+    Schema,
     model: jest.fn(() => ({
       find:              jest.fn().mockReturnValue(makeChain()),
       findOne:           jest.fn().mockReturnValue(makeChain()),
@@ -41,9 +45,7 @@ jest.mock('mongoose', () => {
       create:            jest.fn().mockResolvedValue({}),
       save:              jest.fn().mockResolvedValue({}),
     })),
-    Types: {
-      ObjectId: String,
-    },
+    Types: { ObjectId: String },
   };
 });
 
