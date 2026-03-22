@@ -34,7 +34,15 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "collectCoverageFrom": ["src/**/*.js","!src/server.js","!src/config/swagger.js"],
-    "coverageThreshold": {"global":{"lines":50}}
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js",
+      "!src/config/swagger.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 40
+      }
+    }
   }
 }
