@@ -15,7 +15,6 @@ const eventRoutes = require('./routes/eventRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
-app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'] }));
 app.use(rateLimit({ windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000, max: parseInt(process.env.RATE_LIMIT_MAX) || 100 }));
