@@ -3,17 +3,25 @@ name: User Service - CI/CD
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'user-service/**'
+      - '.github/workflows/user-service.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'user-service/**'
 
 env:
   IMAGE_NAME: user-service
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: user-service        # ✅ run all commands inside service folder
     services:
       mongodb:
         image: mongo:7
@@ -31,6 +39,7 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
+          cache-dependency-path: user-service/package-lock.json  # ✅ correct path
 
       - run: npm ci
 
@@ -49,13 +58,16 @@ jobs:
         if: always()
         with:
           name: user-coverage
-          path: coverage/
+          path: user-service/coverage/          # ✅ correct path
           retention-days: 7
 
   security-scan:
     name: Snyk Security Scan
     runs-on: ubuntu-latest
     needs: test
+    defaults:
+      run:
+        working-directory: user-service
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +75,7 @@ jobs:
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
+          cache-dependency-path: user-service/package-lock.json  # ✅ correct path
 
       - run: npm ci
 
@@ -76,7 +89,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: snyk.sarif
+          sarif_file: user-service/snyk.sarif   # ✅ correct path
         continue-on-error: true
 
   build:
@@ -108,7 +121,7 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./user-service              # ✅ correct Docker build context
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha

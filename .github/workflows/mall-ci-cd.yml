@@ -3,17 +3,25 @@ name: Mall API Service - CI/CD
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'mall-api-service/**'
+      - '.github/workflows/mall-api-service.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'mall-api-service/**'
 
 env:
   IMAGE_NAME: mall-api-service
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mall-api-service     # ✅ run all commands inside service folder
     services:
       mongodb:
         image: mongo:7
@@ -26,12 +34,17 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
+          cache-dependency-path: mall-api-service/package-lock.json  # ✅ correct path
+
       - run: npm ci
+
       - run: npm run lint --if-present
+
       - name: Run tests with coverage
         run: npm run test:ci -- --coverage
         env:
@@ -39,34 +52,43 @@ jobs:
           JWT_SECRET: test-secret
           INTERNAL_API_KEY: test-key
           MONGODB_URI: mongodb://localhost:27017/test_db
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mall-api-coverage
-          path: coverage/
+          path: mall-api-service/coverage/       # ✅ correct path
           retention-days: 7
 
   security-scan:
     name: Snyk Security Scan
     runs-on: ubuntu-latest
     needs: test
+    defaults:
+      run:
+        working-directory: mall-api-service
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '${{ env.NODE_VERSION }}'
           cache: 'npm'
+          cache-dependency-path: mall-api-service/package-lock.json  # ✅ correct path
+
       - run: npm ci
+
       - uses: snyk/actions/node@master
         continue-on-error: true
         env:
           SNYK_TOKEN: '${{ secrets.SNYK_TOKEN }}'
         with:
           args: '--severity-threshold=high --sarif-file-output=snyk.sarif'
+
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: snyk.sarif
+          sarif_file: mall-api-service/snyk.sarif  # ✅ correct path
         continue-on-error: true
 
   build:
@@ -74,14 +96,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, security-scan]
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: docker/setup-buildx-action@v3
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -89,14 +117,16 @@ jobs:
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
+
       - uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./mall-api-service           # ✅ correct Docker build context
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           target: production
+
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
@@ -105,6 +135,7 @@ jobs:
           format: sarif
           output: trivy.sarif
           severity: CRITICAL,HIGH
+
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         continue-on-error: true
@@ -126,7 +157,6 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache": false}')
-          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
           if [ "$RESPONSE" != "201" ]; then
             echo "Deploy trigger failed with HTTP $RESPONSE"
             exit 1
