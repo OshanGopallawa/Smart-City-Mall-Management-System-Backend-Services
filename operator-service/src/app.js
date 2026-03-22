@@ -1,0 +1,30 @@
+require('dotenv').config();
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+const logger = require('./config/logger');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+
+const authRoutes = require('./routes/authRoutes');
+const operatorRoutes = require('./routes/operatorRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+
+const app = express();
+app.use(helmet());
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'] }));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX) || 100 }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Operator Service - Swagger' }));
+app.use('/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/operators', operatorRoutes);
+app.get('/', (req, res) => res.json({ service: 'Operator Service', version: '1.0.0', db: 'MongoDB Atlas (operator_service_db)', docs: '/api-docs', health: '/health' }));
+app.use(notFound);
+app.use(errorHandler);
+module.exports = app;

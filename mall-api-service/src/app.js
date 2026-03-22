@@ -1,0 +1,32 @@
+require('dotenv').config();
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+const logger = require('./config/logger');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+
+const storeRoutes = require('./routes/storeRoutes');
+const dealRoutes = require('./routes/dealRoutes');
+const eventRoutes = require('./routes/eventRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+
+const app = express();
+app.use(helmet());
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'] }));
+app.use(rateLimit({ windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000, max: parseInt(process.env.RATE_LIMIT_MAX) || 100 }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Mall API Service - Swagger' }));
+app.use('/health', healthRoutes);
+app.use('/api/stores', storeRoutes);
+app.use('/api/deals', dealRoutes);
+app.use('/api/events', eventRoutes);
+app.get('/', (req, res) => res.json({ service: 'Mall API Service', version: '1.0.0', db: 'MongoDB Atlas (mall_api_db)', docs: '/api-docs', health: '/health', endpoints: { stores: '/api/stores', deals: '/api/deals', events: '/api/events' } }));
+app.use(notFound);
+app.use(errorHandler);
+module.exports = app;

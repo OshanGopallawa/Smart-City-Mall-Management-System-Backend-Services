@@ -1,0 +1,147 @@
+services:
+
+  # ── API Gateway (Nginx) ──────────────────────────────────────────
+  api-gateway:
+    image: nginx:alpine
+    container_name: api-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx1.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - user-service
+      - operator-service
+      - mall-api-service
+      - analytics-service
+    networks:
+      - mall-network
+    restart: unless-stopped
+
+  # ── Frontend (React) ─────────────────────────────────────────────
+  mall-frontend:
+    build:
+      context: ./mall-frontend
+      target: production
+    container_name: mall-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - mall-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── 1. User Service ──────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./user-service
+      target: production
+    container_name: user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=${USER_MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - MALL_API_SERVICE_URL=http://mall-api-service:3003
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3004
+      - BCRYPT_ROUNDS=12
+    networks:
+      - mall-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── 2. Operator Service ──────────────────────────────────────────
+  operator-service:
+    build:
+      context: ./operator-service
+      target: production
+    container_name: operator-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - MONGODB_URI=${OPERATOR_MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - MALL_API_SERVICE_URL=http://mall-api-service:3003
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3004
+      - BCRYPT_ROUNDS=12
+    networks:
+      - mall-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── 3. Mall API Service ──────────────────────────────────────────
+  mall-api-service:
+    build:
+      context: ./mall-api-service
+      target: production
+    container_name: mall-api-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - MONGODB_URI=${MALL_MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - USER_SERVICE_URL=http://user-service:3001
+      - OPERATOR_SERVICE_URL=http://operator-service:3002
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3004
+    networks:
+      - mall-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── 4. Analytics Service ─────────────────────────────────────────
+  analytics-service:
+    build:
+      context: ./analytics-service
+      target: production
+    container_name: analytics-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - MONGODB_URI=${ANALYTICS_MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+    networks:
+      - mall-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  mall-network:
+    driver: bridge
+    name: smart-city-mall-network
