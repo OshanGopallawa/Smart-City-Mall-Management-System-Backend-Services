@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Operator Service - Swagger' }));
 app.use('/health', healthRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth/operators', authRoutes);
 app.use('/api/operators', operatorRoutes);
 app.get('/', (req, res) => res.json({ service: 'Operator Service', version: '1.0.0', db: 'MongoDB Atlas (operator_service_db)', docs: '/api-docs', health: '/health' }));
 app.use(notFound);
