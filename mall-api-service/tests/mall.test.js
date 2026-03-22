@@ -14,6 +14,23 @@ jest.mock('mongoose', () => {
     ObjectId: String,
   };
 
+  // ✅ Build a chainable mock that supports .populate() at every level
+  const makeChain = () => {
+    const chain = {
+      populate: jest.fn().mockReturnThis(),
+      skip:     jest.fn().mockReturnThis(),
+      limit:    jest.fn().mockReturnThis(),
+      sort:     jest.fn().mockReturnThis(),
+      select:   jest.fn().mockReturnThis(),
+      lean:     jest.fn().mockReturnThis(),
+      exec:     jest.fn().mockResolvedValue([]),
+      then:     undefined, // ✅ makes the chain itself awaitable as []
+    };
+    // ✅ make the chain thenable so `await Model.find(...)` resolves to []
+    chain.then = (resolve) => Promise.resolve([]).then(resolve);
+    return chain;
+  };
+
   return {
     connect: jest.fn().mockResolvedValue({}),
     connection: {
@@ -23,18 +40,13 @@ jest.mock('mongoose', () => {
     },
     Schema,
     model: jest.fn(() => ({
-      find: jest.fn().mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            sort: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
-      findById: jest.fn().mockResolvedValue(null),
-      findByIdAndUpdate: jest.fn().mockResolvedValue(null),
-      countDocuments: jest.fn().mockResolvedValue(0),
-      create: jest.fn(),
-      populate: jest.fn(),
+      find:            jest.fn().mockReturnValue(makeChain()),
+      findById:        jest.fn().mockReturnValue(makeChain()),
+      findByIdAndUpdate: jest.fn().mockReturnValue(makeChain()),
+      findOneAndUpdate:  jest.fn().mockReturnValue(makeChain()),
+      countDocuments:  jest.fn().mockResolvedValue(0),
+      create:          jest.fn().mockResolvedValue({}),
+      save:            jest.fn().mockResolvedValue({}),
     })),
     Types: {
       ObjectId: String,
