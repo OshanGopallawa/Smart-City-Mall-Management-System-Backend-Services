@@ -22,7 +22,7 @@ const getAllOperators = async (req, res, next) => {
 const getOperatorById = async (req, res, next) => {
   try {
     const op = await Operator.findById(req.params.id).select('-password_hash -refresh_token');
-    if (!op) return res.status(404).json({ success: false, message: 'Operator not found' });
+    if (!op) return res.status(404).json({ success: false, message: 'Operator not found in the system' });
     res.json({ success: true, data: op });
   } catch (err) { next(err); }
 };
